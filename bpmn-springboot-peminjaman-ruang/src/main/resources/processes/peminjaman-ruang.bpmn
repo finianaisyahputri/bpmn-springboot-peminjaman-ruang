@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_Peminjaman" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="peminjamanRuang" name="Peminjaman Ruang HIMTI" isExecutable="true">
+
+    <bpmn:startEvent id="Start" name="Pengajuan diterima">
+      <bpmn:outgoing>F1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="Task_Cek" name="Cek ketersediaan ruangan" camunda:expression="${peminjamanService.cekKetersediaan(execution)}">
+      <bpmn:incoming>F1</bpmn:incoming>
+      <bpmn:outgoing>F2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_Tersedia" name="Ruangan tersedia?" default="F_Tidak1">
+      <bpmn:incoming>F2</bpmn:incoming>
+      <bpmn:outgoing>F_Ya1</bpmn:outgoing>
+      <bpmn:outgoing>F_Tidak1</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:userTask id="Task_Review" name="Review &amp; persetujuan Sekum" camunda:candidateGroups="sekum">
+      <bpmn:incoming>F_Ya1</bpmn:incoming>
+      <bpmn:outgoing>F3</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:exclusiveGateway id="GW_Setuju" name="Disetujui?" default="F_Tidak2">
+      <bpmn:incoming>F3</bpmn:incoming>
+      <bpmn:outgoing>F_Ya2</bpmn:outgoing>
+      <bpmn:outgoing>F_Tidak2</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_Setuju" name="Set status DISETUJUI" camunda:expression="${peminjamanService.updateStatus(execution, 'DISETUJUI')}">
+      <bpmn:incoming>F_Ya2</bpmn:incoming>
+      <bpmn:outgoing>F4</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_Tolak1" name="Set status DITOLAK (bentrok)" camunda:expression="${peminjamanService.updateStatus(execution, 'DITOLAK_BENTROK')}">
+      <bpmn:incoming>F_Tidak1</bpmn:incoming>
+      <bpmn:outgoing>F5</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_Tolak2" name="Set status DITOLAK" camunda:expression="${peminjamanService.updateStatus(execution, 'DITOLAK')}">
+      <bpmn:incoming>F_Tidak2</bpmn:incoming>
+      <bpmn:outgoing>F6</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="End_Setuju" name="Disetujui"><bpmn:incoming>F4</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="End_Tolak1" name="Ditolak (bentrok)"><bpmn:incoming>F5</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="End_Tolak2" name="Ditolak"><bpmn:incoming>F6</bpmn:incoming></bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="F1" sourceRef="Start" targetRef="Task_Cek" />
+    <bpmn:sequenceFlow id="F2" sourceRef="Task_Cek" targetRef="GW_Tersedia" />
+    <bpmn:sequenceFlow id="F_Ya1" name="Ya" sourceRef="GW_Tersedia" targetRef="Task_Review">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${tersedia}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F_Tidak1" name="Tidak" sourceRef="GW_Tersedia" targetRef="Task_Tolak1" />
+    <bpmn:sequenceFlow id="F3" sourceRef="Task_Review" targetRef="GW_Setuju" />
+    <bpmn:sequenceFlow id="F_Ya2" name="Ya" sourceRef="GW_Setuju" targetRef="Task_Setuju">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${setuju}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F_Tidak2" name="Tidak" sourceRef="GW_Setuju" targetRef="Task_Tolak2" />
+    <bpmn:sequenceFlow id="F4" sourceRef="Task_Setuju" targetRef="End_Setuju" />
+    <bpmn:sequenceFlow id="F5" sourceRef="Task_Tolak1" targetRef="End_Tolak1" />
+    <bpmn:sequenceFlow id="F6" sourceRef="Task_Tolak2" targetRef="End_Tolak2" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="D1">
+    <bpmndi:BPMNPlane id="P1" bpmnElement="peminjamanRuang">
+      <bpmndi:BPMNShape id="S_Start" bpmnElement="Start"><dc:Bounds x="152" y="102" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_Cek" bpmnElement="Task_Cek"><dc:Bounds x="240" y="80" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_GW1" bpmnElement="GW_Tersedia" isMarkerVisible="true"><dc:Bounds x="395" y="95" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_Review" bpmnElement="Task_Review"><dc:Bounds x="500" y="80" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_GW2" bpmnElement="GW_Setuju" isMarkerVisible="true"><dc:Bounds x="655" y="95" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_Setuju" bpmnElement="Task_Setuju"><dc:Bounds x="760" y="80" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_EndSetuju" bpmnElement="End_Setuju"><dc:Bounds x="912" y="102" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_Tolak1" bpmnElement="Task_Tolak1"><dc:Bounds x="370" y="220" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_EndTolak1" bpmnElement="End_Tolak1"><dc:Bounds x="522" y="242" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_Tolak2" bpmnElement="Task_Tolak2"><dc:Bounds x="630" y="220" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_EndTolak2" bpmnElement="End_Tolak2"><dc:Bounds x="782" y="242" width="36" height="36" /></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="E_F1" bpmnElement="F1"><di:waypoint x="188" y="120" /><di:waypoint x="240" y="120" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F2" bpmnElement="F2"><di:waypoint x="340" y="120" /><di:waypoint x="395" y="120" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_Ya1" bpmnElement="F_Ya1"><di:waypoint x="445" y="120" /><di:waypoint x="500" y="120" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_Tidak1" bpmnElement="F_Tidak1"><di:waypoint x="420" y="145" /><di:waypoint x="420" y="220" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F3" bpmnElement="F3"><di:waypoint x="600" y="120" /><di:waypoint x="655" y="120" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_Ya2" bpmnElement="F_Ya2"><di:waypoint x="705" y="120" /><di:waypoint x="760" y="120" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_Tidak2" bpmnElement="F_Tidak2"><di:waypoint x="680" y="145" /><di:waypoint x="680" y="220" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F4" bpmnElement="F4"><di:waypoint x="860" y="120" /><di:waypoint x="912" y="120" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F5" bpmnElement="F5"><di:waypoint x="470" y="260" /><di:waypoint x="522" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F6" bpmnElement="F6"><di:waypoint x="730" y="260" /><di:waypoint x="782" y="260" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
